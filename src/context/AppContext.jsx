@@ -2,12 +2,18 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { getPanchangData, getUserSpecificScore } from '../services/panchangService';
 
 // Create context
-const AppContext = createContext();
+const AppContext = createContext(null);
 
 // Custom hook to use the context
-export const useAppContext = () => useContext(AppContext);
+export function useAppContext() {
+  const context = useContext(AppContext);
+  if (context === undefined) {
+    throw new Error('useAppContext must be used within an AppProvider');
+  }
+  return context;
+}
 
-export const AppProvider = ({ children }) => {
+export function AppProvider({ children }) {
   // State variables
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [userNakshatra, setUserNakshatra] = useState(null);
@@ -183,5 +189,8 @@ export const AppProvider = ({ children }) => {
       {children}
     </AppContext.Provider>
   );
-};
+}
+
+// Export the context and provider
+export { AppContext };
 export default AppProvider;

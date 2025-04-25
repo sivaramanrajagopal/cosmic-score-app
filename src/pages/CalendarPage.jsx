@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
+import { AppContext } from '../context/AppContext';
 
 const CalendarPage = () => {
-  const { selectedDate, changeDate, isEnglish } = useAppContext();
-  const [currentMonth, setCurrentMonth] = useState(new Date(selectedDate));
+  // Using React's useContext directly instead of the custom hook
+  const context = useContext(AppContext);
+  const { selectedDate, changeDate, isEnglish } = context || {};
+  
+  const [currentMonth, setCurrentMonth] = useState(new Date(selectedDate || new Date()));
   
   // Generate calendar days
   const generateCalendarDays = () => {
@@ -78,11 +82,14 @@ const CalendarPage = () => {
   
   // Handle date selection
   const handleDateSelect = (date) => {
-    changeDate(date);
+    if (changeDate) {
+      changeDate(date);
+    }
   };
   
   // Check if a date is the same as the currently selected date
   const isSameDate = (date1, date2) => {
+    if (!date1 || !date2) return false;
     return date1.getFullYear() === date2.getFullYear() &&
            date1.getMonth() === date2.getMonth() &&
            date1.getDate() === date2.getDate();
@@ -93,6 +100,11 @@ const CalendarPage = () => {
     const today = new Date();
     return isSameDate(date, today);
   };
+  
+  // If context is null, show loading
+  if (!context) {
+    return <div className="p-5 text-center">Loading calendar...</div>;
+  }
   
   return (
     <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
@@ -167,7 +179,7 @@ const CalendarPage = () => {
             {isEnglish ? "Selected Date:" : "தேர்ந்தெடுக்கப்பட்ட தேதி:"}
           </h3>
           <p className="text-indigo-600 font-bold">
-            {selectedDate.toLocaleDateString(
+            {selectedDate && selectedDate.toLocaleDateString(
               isEnglish ? 'en-US' : 'ta-IN',
               { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
             )}
@@ -176,8 +188,8 @@ const CalendarPage = () => {
         
         {/* Back to Home Button */}
         <Link 
-  to="/"
-  className="w-full mt-6 bg-gradient-to-r from-[#2D1B54] to-[#1A1046] hover:from-[#1A1046] hover:to-[#2D1B54] text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center">
+          to="/"
+          className="w-full mt-6 bg-gradient-to-r from-[#2D1B54] to-[#1A1046] hover:from-[#1A1046] hover:to-[#2D1B54] text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center">
           {isEnglish ? "View Cosmic Score" : "கோஸ்மிக் மதிப்பெண்ணைக் காண்க"}
         </Link>
       </div>

@@ -408,8 +408,16 @@ function calculateTarabalam(dayNakshatra, userNakshatraId) {
 // Get panchang data for a specific date
 export async function getPanchangData(date) {
   try {
-    const formattedDate = DateTime.fromJSDate(date).toISODate();
+    // const formattedDate = DateTime.fromJSDate(date).toISODate();
+    const dateObj = new Date(date);
+    // Use UTC methods to create a consistent date string in IST
+    const year = dateObj.getUTCFullYear();
+    const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getUTCDate()).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
     console.log("Attempting to fetch panchang data for date:", formattedDate);
+    
+    // Check if Supabase connection is working
     
     // Check if Supabase connection is working
     if (!supabase) {

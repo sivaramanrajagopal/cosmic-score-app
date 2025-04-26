@@ -111,7 +111,7 @@ const CalendarPage = () => {
       {/* Header */}
       <div className="bg-gradient-to-r from-[#2D1B54] to-[#1A1046] p-5 text-white shadow-lg">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-bold">
+          <h1 className="text-xl font-bold text-white">
             📅 {isEnglish ? "Calendar" : "நாட்காட்டி"}
           </h1>
         </div>
@@ -133,7 +133,7 @@ const CalendarPage = () => {
           >
             &lt;
           </button>
-          <h2 className="font-bold text-lg">{monthYearText}</h2>
+          <h2 className="font-bold text-lg text-gray-800 dark:text-white">{monthYearText}</h2>
           <button 
             onClick={goToNextMonth}
             className="p-2 hover:bg-gray-100 rounded-full"
@@ -147,7 +147,7 @@ const CalendarPage = () => {
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
             <div 
               key={day} 
-              className="text-center font-medium text-sm py-2"
+               className="text-center font-medium text-sm py-2 text-gray-700 dark:text-gray-300"
             >
               {isEnglish ? day : ['ஞா', 'தி', 'செ', 'பு', 'வி', 'வெ', 'ச'][index]}
             </div>
@@ -158,33 +158,33 @@ const CalendarPage = () => {
         <div className="grid grid-cols-7 gap-1">
           {days.map((day, index) => (
             <button
-              key={index}
-              onClick={() => handleDateSelect(day.date)}
-              className={`
-                h-12 rounded-lg text-center 
-                ${!day.isCurrentMonth ? 'text-gray-400' : ''}
-                ${isSameDate(day.date, selectedDate) ? 'bg-[#2D1B54] text-white' : ''}
-                ${isToday(day.date) && !isSameDate(day.date, selectedDate) ? 'border border-indigo-600' : ''}
-                ${day.isCurrentMonth && !isSameDate(day.date, selectedDate) && !isToday(day.date) ? 'hover:bg-indigo-50' : ''}
-              `}
-            >
-              {day.date.getDate()}
-            </button>
+  key={index}
+  onClick={() => handleDateSelect(day.date)}
+  className={`
+    h-12 rounded-lg text-center 
+    ${!day.isCurrentMonth ? 'text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-white'}
+    ${isSameDate(day.date, selectedDate) ? 'bg-[#2D1B54] text-white' : ''}
+    ${isToday(day.date) && !isSameDate(day.date, selectedDate) ? 'border border-indigo-600 dark:border-indigo-400' : ''}
+    ${day.isCurrentMonth && !isSameDate(day.date, selectedDate) && !isToday(day.date) ? 'hover:bg-indigo-50 dark:hover:bg-indigo-900' : ''}
+  `}
+>
+  {day.date.getDate()}
+</button>
           ))}
         </div>
         
-        {/* Current Selection Info */}
-        <div className="mt-6 p-4 bg-[#F8F3E6]/70 rounded-lg border border-[#E3B23C]/20">
-          <h3 className="font-medium mb-2">
-            {isEnglish ? "Selected Date:" : "தேர்ந்தெடுக்கப்பட்ட தேதி:"}
-          </h3>
-          <p className="text-indigo-600 font-bold">
-            {selectedDate && selectedDate.toLocaleDateString(
-              isEnglish ? 'en-US' : 'ta-IN',
-              { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
-            )}
-          </p>
-        </div>
+{/* Current Selection Info */}
+<div className="mt-6 p-4 bg-[#F8F3E6]/70 dark:bg-gray-800 rounded-lg border border-[#E3B23C]/20 dark:border-indigo-500/30">
+  <h3 className="font-medium mb-2 text-gray-800 dark:text-gray-200">
+    {isEnglish ? "Selected Date:" : "தேர்ந்தெடுக்கப்பட்ட தேதி:"}
+  </h3>
+  <p className="text-indigo-600 dark:text-indigo-300 font-bold">
+    {selectedDate && selectedDate.toLocaleDateString(
+      isEnglish ? 'en-US' : 'ta-IN',
+      { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
+    )}
+  </p>
+</div>
         
         {/* Back to Home Button */}
         <Link 

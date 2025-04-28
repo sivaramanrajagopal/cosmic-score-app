@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { getPanchangData, getUserSpecificScore } from '../services/panchangService';
+import { getPanchangData, getUserSpecificScore, normalizeDate } from '../services/panchangService';
 
 // Create context
 const AppContext = createContext(null);
@@ -14,8 +14,13 @@ export function useAppContext() {
 }
 
 export function AppProvider({ children }) {
-  // State variables
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  // State variables - initialize date with noon time to avoid timezone issues
+  const [selectedDate, setSelectedDate] = useState(() => {
+    // Always initialize with noon time to avoid timezone date shifting
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+  });
+  
   const [userNakshatra, setUserNakshatra] = useState(null);
   const [isEnglish, setIsEnglish] = useState(true);
   const [panchangData, setPanchangData] = useState(null);
@@ -57,7 +62,21 @@ export function AppProvider({ children }) {
     
     try {
       console.log("Fetching panchang data for:", date);
-      const data = await getPanchangData(date);
+      
+      // Ensure we're using a proper Date object before passing it
+      let dateObject;
+      if (date instanceof Date) {
+        // Clone the date and set to noon time to avoid timezone issues
+        dateObject = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
+      } else {
+        // Convert to Date if it's not already, and set to noon time
+        const parsedDate = new Date(date);
+        dateObject = new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate(), 12, 0, 0);
+      }
+      
+      console.log("Normalized date for API query:", dateObject);
+      // Get panchang data using the consistent date
+      const data = await getPanchangData(dateObject);
       setPanchangData(data);
     } catch (err) {
       console.error('Error fetching panchang data:', err);
@@ -78,7 +97,19 @@ export function AppProvider({ children }) {
     
     try {
       console.log("Calculating personal score for nakshatra:", userNakshatra.name);
-      const scoreData = await getUserSpecificScore(selectedDate, userNakshatra.id);
+      
+      // Ensure we're using a consistent date object
+      let dateObject;
+      if (selectedDate instanceof Date) {
+        // Clone the date and set to noon time to avoid timezone issues
+        dateObject = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 12, 0, 0);
+      } else {
+        // Convert to Date if it's not already, and set to noon time
+        const parsedDate = new Date(selectedDate);
+        dateObject = new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate(), 12, 0, 0);
+      }
+      
+      const scoreData = await getUserSpecificScore(dateObject, userNakshatra.id);
       console.log("Received personal score data:", scoreData);
       setPersonalScore(scoreData);
     } catch (err) {
@@ -96,8 +127,21 @@ export function AppProvider({ children }) {
   // Function to change date
   const changeDate = (date) => {
     console.log("Changing date to:", date);
-    setSelectedDate(date);
-    fetchPanchangData(date);
+    
+    // Ensure we have a proper Date object with noon time
+    let dateObject;
+    if (date instanceof Date) {
+      // Clone the date and set to noon time to avoid timezone issues
+      dateObject = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
+    } else {
+      // Convert to Date if it's not already, and set to noon time
+      const parsedDate = new Date(date);
+      dateObject = new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate(), 12, 0, 0);
+    }
+    
+    console.log("Standardized date object:", dateObject);
+    setSelectedDate(dateObject);
+    fetchPanchangData(dateObject);
   };
   
   // Function to set user nakshatra
@@ -119,11 +163,61 @@ export function AppProvider({ children }) {
     try {
       console.log("Sharing to WhatsApp...");
       
-      // Format date
+      // Format date - use UTC timeZone to ensure consistent display
       const formattedDate = selectedDate.toLocaleDateString(
         isEnglish ? 'en-US' : 'ta-IN',
-        { year: 'numeric', month: 'long', day: 'numeric' }
+        { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }
       );
+      
+      // Extract essential panchang details
+      let vaara = '';
+      let nakshatra = '';
+      let tithi = '';
+      
+      // Extract vaara (weekday)
+      if (panchangData?.vaara) {
+        vaara = panchangData.vaara;
+      }
+      
+      // Extract nakshatra
+      try {
+        if (panchangData?.main_nakshatra) {
+          nakshatra = panchangData.main_nakshatra;
+        } else if (panchangData?.nakshatra) {
+          const processedNakshatra = typeof panchangData.nakshatra === 'string' 
+            ? JSON.parse(panchangData.nakshatra) 
+            : panchangData.nakshatra;
+          
+          nakshatra = Array.isArray(processedNakshatra) 
+            ? processedNakshatra[0]?.name 
+            : processedNakshatra?.name || '';
+        }
+      } catch (e) {
+        console.error("Error parsing nakshatra:", e);
+        nakshatra = '';
+      }
+      
+      // Extract tithi
+      try {
+        if (panchangData?.tithi) {
+          const processedTithi = typeof panchangData.tithi === 'string' 
+            ? JSON.parse(panchangData.tithi) 
+            : panchangData.tithi;
+          
+          tithi = Array.isArray(processedTithi) 
+            ? processedTithi[0]?.name 
+            : processedTithi?.name || '';
+        }
+      } catch (e) {
+        console.error("Error parsing tithi:", e);
+        tithi = '';
+      }
+      
+      // Get score value
+      const scoreValue = personalScore?.score || panchangData?.cosmic_score || '-';
+      
+      // App link (replace with your actual app URL in production)
+      const appLink = "https://cosmicscore.app"; // Replace with your actual app URL
       
       // Default message
       let message;
@@ -133,15 +227,10 @@ export function AppProvider({ children }) {
         console.log("Using custom text for WhatsApp share");
         message = customText;
       } else {
-        // Generate default message
-        console.log("Generating default WhatsApp share text");
+        // Generate default message in the suggested format with emojis
         message = isEnglish
-          ? `My Cosmic Score for ${formattedDate}: ${personalScore?.score || panchangData?.cosmic_score || '-'}/10\n\n` +
-            `${userNakshatra ? `Birth Star: ${userNakshatra.name}\n` : ''}` +
-            `Get your daily Cosmic Score based on Vedic astrology 🌟`
-          : `${formattedDate} அன்றைய எனது கோஸ்மிக் மதிப்பெண்: ${personalScore?.score || panchangData?.cosmic_score || '-'}/10\n\n` +
-            `${userNakshatra ? `பிறப்பு நட்சத்திரம்: ${userNakshatra.tamil || userNakshatra.name}\n` : ''}` +
-            `வேத ஜோதிடத்தின் அடிப்படையில் உங்கள் தினசரி கோஸ்மிக் மதிப்பெண்ணைப் பெறுங்கள் 🌟`;
+          ? `Cosmic Score for ${formattedDate}: 🌞 ${vaara}, 🌙 Nakshatra: ${nakshatra}, Tithi: ${tithi}, Score: ${scoreValue}/10. Check yours 👉 ${appLink}`
+          : `${formattedDate} அன்றைய கோஸ்மிக் மதிப்பெண்: 🌞 ${vaara}, 🌙 நட்சத்திரம்: ${nakshatra}, திதி: ${tithi}, மதிப்பெண்: ${scoreValue}/10. உங்களுடையதை பார்க்க 👉 ${appLink}`;
       }
       
       // Encode the message for WhatsApp
@@ -154,11 +243,22 @@ export function AppProvider({ children }) {
       
       // Open WhatsApp in a new tab
       window.open(whatsappUrl, '_blank');
+      
+      // For mobile devices, try to open the WhatsApp app directly after a short delay
+      setTimeout(() => {
+        try {
+          const mobileUrl = `whatsapp://send?text=${encodedMessage}`;
+          window.location.href = mobileUrl;
+          console.log("Attempting to open WhatsApp app with URL:", mobileUrl);
+        } catch (mobileError) {
+          console.log("Mobile app opening attempt may have failed:", mobileError);
+        }
+      }, 1500);
     } catch (err) {
       console.error('Error sharing to WhatsApp:', err);
       // Simple fallback if there's an error
       try {
-        const fallbackMessage = `My Cosmic Score: ${personalScore?.score || panchangData?.cosmic_score || '-'}/10`;
+        const fallbackMessage = `Cosmic Score: ${personalScore?.score || panchangData?.cosmic_score || '-'}/10`;
         window.open(`https://wa.me/?text=${encodeURIComponent(fallbackMessage)}`, '_blank');
       } catch (fallbackError) {
         console.error('Fallback sharing also failed:', fallbackError);

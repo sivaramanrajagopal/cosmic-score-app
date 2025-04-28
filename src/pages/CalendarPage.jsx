@@ -7,29 +7,35 @@ const CalendarPage = () => {
   const context = useContext(AppContext);
   const { selectedDate, changeDate, isEnglish } = context || {};
   
-  const [currentMonth, setCurrentMonth] = useState(new Date(selectedDate || new Date()));
+  // Initialize with noon time to avoid timezone date shifting
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const dateToUse = selectedDate || new Date();
+    // Create a date with the same year, month components to avoid timezone shifts
+    return new Date(dateToUse.getFullYear(), dateToUse.getMonth(), 1, 12, 0, 0);
+  });
   
   // Generate calendar days
   const generateCalendarDays = () => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     
-    // Get first day of month
-    const firstDay = new Date(year, month, 1);
-    // Get last day of month
-    const lastDay = new Date(year, month + 1, 0);
+    // Get first day of month - set to noon to avoid timezone shifts
+    const firstDay = new Date(year, month, 1, 12, 0, 0);
+    // Get last day of month - set to noon to avoid timezone shifts
+    const lastDay = new Date(year, month + 1, 0, 12, 0, 0);
     
     // Get day of week for first day (0 = Sunday, 1 = Monday, etc.)
     const firstDayOfWeek = firstDay.getDay();
     
     // Calculate number of days in previous month
-    const daysInPreviousMonth = new Date(year, month, 0).getDate();
+    const daysInPreviousMonth = new Date(year, month, 0, 12, 0, 0).getDate();
     
     // Calculate days to display from previous month
     const prevMonthDays = [];
     for (let i = firstDayOfWeek - 1; i >= 0; i--) {
       prevMonthDays.push({
-        date: new Date(year, month - 1, daysInPreviousMonth - i),
+        // Set to noon time to avoid timezone date shifts
+        date: new Date(year, month - 1, daysInPreviousMonth - i, 12, 0, 0),
         isCurrentMonth: false
       });
     }
@@ -38,7 +44,8 @@ const CalendarPage = () => {
     const currentMonthDays = [];
     for (let i = 1; i <= lastDay.getDate(); i++) {
       currentMonthDays.push({
-        date: new Date(year, month, i),
+        // Set to noon time to avoid timezone date shifts
+        date: new Date(year, month, i, 12, 0, 0),
         isCurrentMonth: true
       });
     }
@@ -50,7 +57,8 @@ const CalendarPage = () => {
     
     for (let i = 1; i <= daysNeeded; i++) {
       nextMonthDays.push({
-        date: new Date(year, month + 1, i),
+        // Set to noon time to avoid timezone date shifts
+        date: new Date(year, month + 1, i, 12, 0, 0),
         isCurrentMonth: false
       });
     }
@@ -61,44 +69,62 @@ const CalendarPage = () => {
   
   const days = generateCalendarDays();
   
-  // Format month and year for display
+  // Format month and year for display - use UTC to ensure consistent display
   const monthYearText = currentMonth.toLocaleDateString(
     isEnglish ? 'en-US' : 'ta-IN',
-    { year: 'numeric', month: 'long' }
+    { year: 'numeric', month: 'long', timeZone: 'UTC' }
   );
   
-  // Handle month navigation
+  // Handle month navigation - ensure noon time to avoid timezone shifts
   const goToPreviousMonth = () => {
     const newDate = new Date(currentMonth);
     newDate.setMonth(newDate.getMonth() - 1);
+    // Maintain noon time
+    newDate.setHours(12, 0, 0, 0);
     setCurrentMonth(newDate);
   };
   
   const goToNextMonth = () => {
     const newDate = new Date(currentMonth);
     newDate.setMonth(newDate.getMonth() + 1);
+    // Maintain noon time
+    newDate.setHours(12, 0, 0, 0);
     setCurrentMonth(newDate);
   };
   
   // Handle date selection
   const handleDateSelect = (date) => {
     if (changeDate) {
-      changeDate(date);
+      // Ensure we have a proper Date object with noon time to prevent date shifting
+      const localDate = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+        12, 0, 0  // Set to noon local time to avoid timezone issues with date boundaries
+      );
+      
+      console.log("Calendar selected date (local):", localDate);
+      changeDate(localDate);
     }
   };
   
   // Check if a date is the same as the currently selected date
+  // Only compare year, month, day - not time
   const isSameDate = (date1, date2) => {
     if (!date1 || !date2) return false;
+    
+    // Compare only year, month, and day components
     return date1.getFullYear() === date2.getFullYear() &&
            date1.getMonth() === date2.getMonth() &&
            date1.getDate() === date2.getDate();
   };
   
-  // Check if a date is today
+  // Check if a date is today - compare only year, month, day
   const isToday = (date) => {
     const today = new Date();
-    return isSameDate(date, today);
+    return date.getFullYear() === today.getFullYear() &&
+           date.getMonth() === today.getMonth() &&
+           date.getDate() === today.getDate();
   };
   
   // If context is null, show loading
@@ -133,7 +159,7 @@ const CalendarPage = () => {
           >
             &lt;
           </button>
-          <h2 className="font-bold text-lg text-gray-800 dark:text-white">{monthYearText}</h2>
+          <h2 className="font-bold text-lg text-gray-800 dark:text-gray">{monthYearText}</h2>
           <button 
             onClick={goToNextMonth}
             className="p-2 hover:bg-gray-100 rounded-full"
@@ -147,7 +173,7 @@ const CalendarPage = () => {
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
             <div 
               key={day} 
-               className="text-center font-medium text-sm py-2 text-gray-700 dark:text-gray-300"
+              className="text-center font-medium text-sm py-2 text-gray-700 dark:text-gray-300"
             >
               {isEnglish ? day : ['ஞா', 'தி', 'செ', 'பு', 'வி', 'வெ', 'ச'][index]}
             </div>
@@ -158,33 +184,33 @@ const CalendarPage = () => {
         <div className="grid grid-cols-7 gap-1">
           {days.map((day, index) => (
             <button
-  key={index}
-  onClick={() => handleDateSelect(day.date)}
-  className={`
-    h-12 rounded-lg text-center 
-    ${!day.isCurrentMonth ? 'text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-white'}
-    ${isSameDate(day.date, selectedDate) ? 'bg-[#2D1B54] text-white' : ''}
-    ${isToday(day.date) && !isSameDate(day.date, selectedDate) ? 'border border-indigo-600 dark:border-indigo-400' : ''}
-    ${day.isCurrentMonth && !isSameDate(day.date, selectedDate) && !isToday(day.date) ? 'hover:bg-indigo-50 dark:hover:bg-indigo-900' : ''}
-  `}
->
-  {day.date.getDate()}
-</button>
+              key={index}
+              onClick={() => handleDateSelect(day.date)}
+              className={`
+                h-12 rounded-lg text-center 
+                ${!day.isCurrentMonth ? 'text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-white'}
+                ${isSameDate(day.date, selectedDate) ? 'bg-[#2D1B54] text-white' : ''}
+                ${isToday(day.date) && !isSameDate(day.date, selectedDate) ? 'border border-indigo-600 dark:border-indigo-400' : ''}
+                ${day.isCurrentMonth && !isSameDate(day.date, selectedDate) && !isToday(day.date) ? 'hover:bg-indigo-50 dark:hover:bg-indigo-900' : ''}
+              `}
+            >
+              {day.date.getDate()}
+            </button>
           ))}
         </div>
         
-{/* Current Selection Info */}
-<div className="mt-6 p-4 bg-[#F8F3E6]/70 dark:bg-gray-800 rounded-lg border border-[#E3B23C]/20 dark:border-indigo-500/30">
-  <h3 className="font-medium mb-2 text-gray-800 dark:text-gray-200">
-    {isEnglish ? "Selected Date:" : "தேர்ந்தெடுக்கப்பட்ட தேதி:"}
-  </h3>
-  <p className="text-indigo-600 dark:text-indigo-300 font-bold">
-    {selectedDate && selectedDate.toLocaleDateString(
-      isEnglish ? 'en-US' : 'ta-IN',
-      { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
-    )}
-  </p>
-</div>
+        {/* Current Selection Info */}
+        <div className="mt-6 p-4 bg-[#F8F3E6]/70 dark:bg-gray-800 rounded-lg border border-[#E3B23C]/20 dark:border-indigo-500/30">
+          <h3 className="font-medium mb-2 text-gray-800 dark:text-gray-200">
+            {isEnglish ? "Selected Date:" : "தேர்ந்தெடுக்கப்பட்ட தேதி:"}
+          </h3>
+          <p className="text-indigo-600 dark:text-indigo-300 font-bold">
+            {selectedDate && selectedDate.toLocaleDateString(
+              isEnglish ? 'en-US' : 'ta-IN',
+              { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }
+            )}
+          </p>
+        </div>
         
         {/* Back to Home Button */}
         <Link 

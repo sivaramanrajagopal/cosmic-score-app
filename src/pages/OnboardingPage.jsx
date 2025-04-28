@@ -36,42 +36,44 @@ const nakshatras = [
 const OnboardingPage = () => {
   const { isEnglish, toggleLanguage, setUserNakshatra } = useAppContext();
   const navigate = useNavigate();
-  
+
   const handleNakshatraSelect = (nakshatra) => {
     setUserNakshatra(nakshatra);
     navigate('/');
   };
-  
+
   return (
     <div className="bg-gradient-to-b from-indigo-600 to-purple-700 p-6 rounded-2xl shadow-lg text-white">
       <h1 className="text-2xl font-bold mb-4 text-center">
         {isEnglish ? "Welcome to Cosmic Score" : "கோஸ்மிக் மதிப்பெண்ணுக்கு வரவேற்கிறோம்"}
       </h1>
       <p className="mb-6 text-center opacity-90">
-        {isEnglish 
-          ? "Please select your birth Nakshatra to get personalized cosmic scores" 
+        {isEnglish
+          ? "Please select your birth Nakshatra to get personalized cosmic scores"
           : "தனிப்பயனாக்கப்பட்ட கோஸ்மிக் மதிப்பெண்களைப் பெற உங்கள் ஜென்ம நட்சத்திரத்தைத் தேர்ந்தெடுக்கவும்"}
       </p>
-      
+
       <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 mb-6">
         <h2 className="text-lg font-medium mb-3">
           {isEnglish ? "Select Your Birth Nakshatra" : "உங்கள் ஜென்ம நட்சத்திரத்தைத் தேர்ந்தெடுக்கவும்"}
         </h2>
-        <div className="grid grid-cols-3 gap-2 max-h-80 overflow-y-auto">
+        <div className="flex flex-wrap gap-2 max-h-80 overflow-y-auto justify-center">
           {nakshatras.map((nakshatra) => (
             <button
               key={nakshatra.id}
-              className="bg-white/20 hover:bg-white/30 rounded-lg p-2 text-center transition-colors"
+              className="bg-white/20 hover:bg-white/30 rounded-lg px-3 py-2 text-center transition-colors min-w-[90px] max-w-[100px] w-full"
               onClick={() => handleNakshatraSelect(nakshatra)}
             >
-              <div className="font-medium">{isEnglish ? nakshatra.name : nakshatra.tamil}</div>
+              <div className="font-medium break-words text-xs leading-tight whitespace-normal text-center">
+                {isEnglish ? nakshatra.name : nakshatra.tamil}
+              </div>
             </button>
           ))}
         </div>
       </div>
-      
+
       <div className="text-center">
-        <button 
+        <button
           onClick={toggleLanguage}
           className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full"
         >

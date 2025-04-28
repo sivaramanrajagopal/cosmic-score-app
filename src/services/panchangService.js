@@ -2,6 +2,21 @@
 import { supabase } from '../utils/supabaseClient';
 import { DateTime } from 'luxon';
 
+/**
+ * Normalizes a date to YYYY-MM-DD format regardless of the user's timezone
+ * @param {Date} date - The JavaScript Date object
+ * @returns {string} A date string in YYYY-MM-DD format
+ */
+export function normalizeDate(date) {
+  // Extract date components based on local time, not UTC
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1; // JS months are 0-indexed
+  const day = date.getDate();
+  
+  // Create a consistent YYYY-MM-DD string (this format avoids timezone issues)
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 // Nakshatra mapping (ID to name and vice versa)
 const nakshatraNameToId = {
   // English names
@@ -82,8 +97,8 @@ const tarabalamTypeTranslations = {
   "Sampat": "சம்பத்",
   "Vipat": "ஆபத்து",
   "Kshema": "க்ஷேம",
-  "pagai": "பகை",
-  "saadhagam": "சாதகம்",
+  "Pratyak": "பகை",
+  "Sadhagam": "சாதகம்",
   "vadham": "வதம்",
   "Mitra": "மித்ர",
   "Parama Mitra": "பரம மித்ர",
@@ -209,7 +224,6 @@ const nakshatraRatings = {
 };
 
 // Calculate the Tarabalam relationship between two nakshatras
-// FIXED: Properly calculate distance by counting from birth star to today's star
 function calculateTarabalam(dayNakshatra, userNakshatraId) {
   // Convert day nakshatra to ID if it's a string name
   let dayNakshatraId;
@@ -253,7 +267,7 @@ function calculateTarabalam(dayNakshatra, userNakshatraId) {
   
   console.log(`Calculating Tarabalam: Day Nakshatra ID: ${dayNakshatraId}, User Nakshatra ID: ${userNakId}`);
   
-  // FIXED: Calculate distance by counting from birth star to today's star
+  // Calculate distance by counting from birth star to today's star
   // If day nakshatra is >= user nakshatra, distance is straightforward
   // If day nakshatra is < user nakshatra, we need to wrap around the zodiac
   let distance;
@@ -408,30 +422,27 @@ function calculateTarabalam(dayNakshatra, userNakshatraId) {
 // Get panchang data for a specific date
 export async function getPanchangData(date) {
   try {
-    // const formattedDate = DateTime.fromJSDate(date).toISODate();
-    const dateObj = new Date(date);
-    // Use UTC methods to create a consistent date string in IST
-    const year = dateObj.getUTCFullYear();
-    const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(dateObj.getUTCDate()).padStart(2, '0');
-    const formattedDate = `${year}-${month}-${day}`;
-    console.log("Attempting to fetch panchang data for date:", formattedDate);
+    // Log the input date for debugging
+    console.log("Original input date to getPanchangData:", date);
     
-    // Check if Supabase connection is working
-    
-    // Check if Supabase connection is working
+    // Normalize the date to YYYY-MM-DD format
+    const formattedDate = normalizeDate(date);
+    console.log("Normalized date for API query:", formattedDate);
+
     if (!supabase) {
       console.error("Supabase client is not initialized");
       throw new Error("Database connection error");
     }
+
+    // Use the normalized date string for the query
+    console.log("Database query - searching for date:", formattedDate);
     
-    // Try to get the data
     const { data, error } = await supabase
       .from('daily_panchangam')
       .select('*')
       .eq('date', formattedDate)
       .single();
-    
+      
     if (error) {
       console.error('Error fetching panchang data:', error);
       console.error('Error code:', error.code);
@@ -449,13 +460,13 @@ export async function getPanchangData(date) {
       
       throw error;
     }
-    
+
     if (!data) {
       console.error('No data found for date:', formattedDate);
       
       // For testing purposes, return mock data if no real data is found
       const mockData = {
-        date: formattedDate,
+        date: formattedDate, // Use the explicitly formatted date
         tithi: [{
           id: 40, 
           index: 0, 
@@ -502,18 +513,26 @@ export async function getPanchangData(date) {
         tarabalam_type: "Vipat"
       };
       
-      console.log("Returning mock data for development");
+      console.log("Returning mock data for development with date:", formattedDate);
       return mockData;
     }
     
-    console.log("Successfully retrieved panchang data:", data);
+    // Additional diagnostic logging at the end
+    if (data) {
+      console.log("Retrieved panchang data with date field:", data.date);
+    }
+    
+    console.log("Successfully retrieved panchang data for date:", formattedDate, data);
     return data;
   } catch (err) {
     console.error('Error in getPanchangData:', err);
     
+    // Use normalizeDate for fallback as well
+    const formattedDate = normalizeDate(date);
+    
     // Return mock data for development to keep the app working
     const mockData = {
-      date: DateTime.fromJSDate(date).toISODate(),
+      date: formattedDate, // Use the explicitly formatted date
       tithi: [{
         id: 40, 
         index: 0, 
@@ -556,26 +575,29 @@ export async function getPanchangData(date) {
       is_amavasai: false,
       is_pournami: false,
       is_mythra_muhurtham: true,
-      chandrashtama_for: ["Punarvasu","Ardra"],
+      chandrashtama_for: ["Punarvasu", "Ardra"],
       tarabalam_type: "Vipat"
     };
     
-    console.log("Returning mock data due to error");
+    console.log("Returning fallback mock data due to error, with date:", formattedDate);
     return mockData;
   }
 }
 
-// Get panchang data for a date range
+// Get panchang data for a date range with similar fix
 export async function getPanchangDataRange(startDate, endDate) {
   try {
-    const formattedStartDate = DateTime.fromJSDate(startDate).toISODate();
-    const formattedEndDate = DateTime.fromJSDate(endDate).toISODate();
+    // Normalize both dates using our consistent function
+    const startDateString = normalizeDate(startDate);
+    const endDateString = normalizeDate(endDate);
+    
+    console.log("Date range query:", startDateString, "to", endDateString);
     
     const { data, error } = await supabase
       .from('daily_panchangam')
       .select('*')
-      .gte('date', formattedStartDate)
-      .lte('date', formattedEndDate)
+      .gte('date', startDateString)
+      .lte('date', endDateString)
       .order('date', { ascending: true });
     
     if (error) {
@@ -587,7 +609,7 @@ export async function getPanchangDataRange(startDate, endDate) {
       // Return mock data range for development
       const mockDataRange = [
         {
-          date: formattedStartDate,
+          date: startDateString,
           tithi: [{name: "நவமி"}],
           vaara: "திங்கட்கிழமை",
           nakshatra: [{name: "திருவோணம்"}],
@@ -595,7 +617,8 @@ export async function getPanchangDataRange(startDate, endDate) {
           cosmic_score: 7.8
         },
         {
-          date: DateTime.fromISO(formattedStartDate).plus({ days: 1 }).toISODate(),
+          // Use normalizeDate here as well
+          date: normalizeDate(new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 1)),
           tithi: [{name: "தசமி"}],
           vaara: "செவ்வாய்க்கிழமை",
           nakshatra: [{name: "அவிட்டம்"}],
@@ -611,9 +634,10 @@ export async function getPanchangDataRange(startDate, endDate) {
     console.error('Error in getPanchangDataRange:', err);
     
     // Return mock data for development
+    const startDateString = normalizeDate(startDate);
     const mockDataRange = [
       {
-        date: DateTime.fromJSDate(startDate).toISODate(),
+        date: startDateString,
         tithi: [{name: "நவமி"}],
         vaara: "திங்கட்கிழமை",
         nakshatra: [{name: "திருவோணம்"}],
@@ -621,7 +645,8 @@ export async function getPanchangDataRange(startDate, endDate) {
         cosmic_score: 7.8
       },
       {
-        date: DateTime.fromJSDate(startDate).plus({ days: 1 }).toISODate(),
+        // Use normalizeDate here as well
+        date: normalizeDate(new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 1)),
         tithi: [{name: "தசமி"}],
         vaara: "செவ்வாய்க்கிழமை",
         nakshatra: [{name: "அவிட்டம்"}],
@@ -637,6 +662,8 @@ export async function getPanchangDataRange(startDate, endDate) {
 export async function getUserSpecificScore(date, userNakshatraId) {
   try {
     console.log("getUserSpecificScore called with date:", date, "and userNakshatraId:", userNakshatraId);
+    
+    // Use normalized date approach for consistency
     const panchangData = await getPanchangData(date);
     console.log("Calculating personal score for nakshatra ID:", userNakshatraId);
     
@@ -1049,49 +1076,86 @@ function generateRecommendations(score, tarabalam, nakshatraId, isChandrashtama)
     recommendations.affirmation.ta = "சவால்கள் வளர்ச்சிக்கான வாய்ப்புகள் என்பதை அறிந்து, பொறுமை மற்றும் உள் வலிமையில் கவனம் செலுத்துகிறேன்.";
   }
   
-  // Adjust recommendations based on Tarabalam effect
-  if (tarabalam.effect === "highly favorable") {
-    recommendations.activities.favorable.en.push("Important ceremonies", "Major life decisions");
-    recommendations.activities.favorable.ta.push("முக்கியமான சடங்குகள்", "முக்கிய வாழ்க்கை முடிவுகள்");
-  } else if (tarabalam.effect === "challenging") {
-    recommendations.activities.unfavorable.en.push("Confrontations", "Major purchases");
-    recommendations.activities.unfavorable.ta.push("மோதல்கள்", "பெரிய கொள்முதல்கள்");
+  // Add favorable colors based on nakshatra and score
+  switch(Number(nakshatraId) % 5) {
+    case 1: // Fire element nakshatras
+      recommendations.colors.en = ["Red", "Orange", "Yellow"];
+      recommendations.colors.ta = ["சிவப்பு", "ஆரஞ்சு", "மஞ்சள்"];
+      break;
+    case 2: // Earth element nakshatras
+      recommendations.colors.en = ["Green", "Brown", "Gold"];
+      recommendations.colors.ta = ["பச்சை", "பழுப்பு", "தங்க நிறம்"];
+      break;
+    case 3: // Air element nakshatras
+      recommendations.colors.en = ["White", "Gray", "Silver"];
+      recommendations.colors.ta = ["வெள்ளை", "சாம்பல்", "வெள்ளி நிறம்"];
+      break;
+    case 4: // Water element nakshatras
+      recommendations.colors.en = ["Blue", "Navy", "Indigo"];
+      recommendations.colors.ta = ["நீலம்", "கடற்படை நீலம்", "கருநீலம்"];
+      break;
+    case 0: // Ether element nakshatras
+      recommendations.colors.en = ["Purple", "Violet", "Lavender"];
+      recommendations.colors.ta = ["ஊதா", "நீல ஊதா", "லாவெண்டர்"];
+      break;
   }
   
-  // Add special recommendations for Chandrashtama
+  // Add favorable and unfavorable directions
+  if (tarabalam.type === "Janma" || tarabalam.type === "Vipat" || tarabalam.type === "vadham") {
+    // For challenging tarabalam, avoid certain directions
+    recommendations.directions.favorable.en = ["East", "North"];
+    recommendations.directions.favorable.ta = ["கிழக்கு", "வடக்கு"];
+    recommendations.directions.unfavorable.en = ["South", "West"];
+    recommendations.directions.unfavorable.ta = ["தெற்கு", "மேற்கு"];
+  } else if (tarabalam.type === "Sampat" || tarabalam.type === "Mitra" || tarabalam.type === "Parama Mitra") {
+    // For favorable tarabalam, prefer certain directions
+    recommendations.directions.favorable.en = ["North", "East", "Northeast"];
+    recommendations.directions.favorable.ta = ["வடக்கு", "கிழக்கு", "வடகிழக்கு"];
+    recommendations.directions.unfavorable.en = ["Southwest"];
+    recommendations.directions.unfavorable.ta = ["தென்மேற்கு"];
+  } else {
+    // For neutral tarabalam
+    recommendations.directions.favorable.en = ["North", "East"];
+    recommendations.directions.favorable.ta = ["வடக்கு", "கிழக்கு"];
+    recommendations.directions.unfavorable.en = ["South"];
+    recommendations.directions.unfavorable.ta = ["தெற்கு"];
+  }
+  
+  // If it's a chandrashtama day, override with specific recommendations
   if (isChandrashtama) {
     recommendations.activities.favorable.en = [
-      "Prayer and meditation",
-      "Rest and recovery",
-      "Simple routines",
-      "Spiritual practices",
-      "Charitable acts"
+      "Prayer and meditation", 
+      "Rest and relaxation", 
+      "Routine tasks",
+      "Self-care",
+      "Reflection"
     ];
     recommendations.activities.favorable.ta = [
       "பிரார்த்தனை மற்றும் தியானம்",
-      "ஓய்வு மற்றும் மீட்பு",
-      "எளிய வழக்கங்கள்",
-      "ஆன்மீக நடைமுறைகள்",
-      "தர்ம செயல்கள்"
+      "ஓய்வு மற்றும் இளைப்பாறுதல்",
+      "வழக்கமான பணிகள்",
+      "சுய பராமரிப்பு",
+      "பிரதிபலிப்பு"
     ];
     recommendations.activities.unfavorable.en = [
-      "Major decisions",
-      "New initiatives",
-      "Financial transactions",
+      "All major new undertakings", 
+      "Important decisions",
       "Travel",
-      "Arguments and conflicts"
+      "Financial investments",
+      "Legal matters"
     ];
     recommendations.activities.unfavorable.ta = [
+      "அனைத்து முக்கிய புதிய முயற்சிகள்",
       "முக்கிய முடிவுகள்",
-      "புதிய முயற்சிகள்",
-      "நிதி பரிவர்த்தனைகள்",
       "பயணம்",
-      "விவாதங்கள் மற்றும் மோதல்கள்"
+      "நிதி முதலீடுகள்",
+      "சட்ட விவகாரங்கள்"
     ];
-    recommendations.affirmation.en = "I focus on inner peace and spiritual growth during this challenging time.";
-    recommendations.affirmation.ta = "இந்த சவாலான நேரத்தில் உள் அமைதி மற்றும் ஆன்மீக வளர்ச்சியில் கவனம் செலுத்துகிறேன்.";
+    recommendations.affirmation.en = "I am patient with myself during this reflective time, knowing that rest now leads to greater strength tomorrow.";
+    recommendations.affirmation.ta = "இந்த பிரதிபலிப்பு நேரத்தில் நான் என்னுடன் பொறுமையாக இருக்கிறேன், இன்றைய ஓய்வு நாளை பெரும் வலிமைக்கு வழிவகுக்கும் என்பதை அறிகிறேன்.";
   }
   
+ 
   // Assign colors based on nakshatra lord
   const nakshatraIdNum = Number(nakshatraId) || 1;
   

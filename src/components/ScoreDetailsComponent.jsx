@@ -135,94 +135,163 @@ const ScoreDetailsComponent = () => {
   };
   
   // Prepare share text - with safety checks for undefined values
-  const prepareShareText = () => {
-    // Make sure selectedDate is available, otherwise use current date
-    const dateToUse = selectedDate || new Date();
-    
-    const formattedDate = dateToUse.toLocaleDateString(
-      isEnglish ? 'en-US' : 'ta-IN',
-      { year: 'numeric', month: 'long', day: 'numeric' }
-    );
-    
-    const scoreText = isEnglish 
-      ? `*My Cosmic Score for ${formattedDate}*: ${personalScore.score}/10 ${getScoreEmoji(personalScore.score)}\n\n`
-      : `*${formattedDate} அன்றைய எனது கோஸ்மிக் மதிப்பெண்*: ${personalScore.score}/10 ${getScoreEmoji(personalScore.score)}\n\n`;
-    
-    const tarabalamText = personalScore.tarabalamExplanation 
-      ? (isEnglish ? personalScore.tarabalamExplanation.en : personalScore.tarabalamExplanation.ta) + '\n\n'
-      : '';
-      
-    const chandrashtamaText = personalScore.isChandrashtama && personalScore.chandrashtamaExplanation
-      ? (isEnglish ? personalScore.chandrashtamaExplanation.en : personalScore.chandrashtamaExplanation.ta) + '\n\n'
-      : '';
-    
-    let favorableActivities = '';
-    let unfavorableActivities = '';
-    let colors = '';
-    let affirmation = '';
+// Updated prepareShareText function for ScoreDetailsComponent.jsx
 
-    // Only include recommendations if they exist
-    if (personalScore.recommendations) {
-      if (personalScore.recommendations.activities && 
-          personalScore.recommendations.activities.favorable &&
-          Array.isArray(personalScore.recommendations.activities.favorable.en)) {
-        favorableActivities = `${isEnglish ? '*Favorable Activities*' : '*சாதகமான செயல்பாடுகள்*'}:\n- ${
-          isEnglish 
-            ? personalScore.recommendations.activities.favorable.en.join('\n- ')
-            : personalScore.recommendations.activities.favorable.ta.join('\n- ')
-        }\n\n`;
-      }
+const prepareShareText = () => {
+  // Make sure selectedDate is available, otherwise use current date
+  const dateToUse = selectedDate || new Date();
+  
+  const formattedDate = dateToUse.toLocaleDateString(
+    isEnglish ? 'en-US' : 'ta-IN',
+    { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }
+  );
+  
+  // Initialize variables with safe empty defaults
+  let vaaraText = '';
+  let nakshatraText = '';
+  let tithiText = '';
+  
+  // Safely extract vaara (weekday)
+  if (typeof personalScore.panchangData?.vaara === 'string') {
+    vaaraText = personalScore.panchangData.vaara;
+  }
+  
+  // Safely extract nakshatra
+  try {
+    if (typeof personalScore.panchangData?.main_nakshatra === 'string') {
+      nakshatraText = personalScore.panchangData.main_nakshatra;
+    } else if (personalScore.panchangData?.nakshatra) {
+      // Handle different possible formats
+      const nakshatraData = personalScore.panchangData.nakshatra;
       
-      if (personalScore.recommendations.activities && 
-          personalScore.recommendations.activities.unfavorable &&
-          Array.isArray(personalScore.recommendations.activities.unfavorable.en)) {
-        unfavorableActivities = `${isEnglish ? '*Unfavorable Activities*' : '*சாதகமற்ற செயல்பாடுகள்*'}:\n- ${
-          isEnglish 
-            ? personalScore.recommendations.activities.unfavorable.en.join('\n- ')
-            : personalScore.recommendations.activities.unfavorable.ta.join('\n- ')
-        }\n\n`;
-      }
-      
-      if (personalScore.recommendations.colors &&
-          Array.isArray(personalScore.recommendations.colors.en)) {
-        colors = `${isEnglish ? '*Favorable Colors*' : '*சாதகமான வண்ணங்கள்*'}: ${
-          isEnglish 
-            ? personalScore.recommendations.colors.en.join(', ')
-            : personalScore.recommendations.colors.ta.join(', ')
-        }\n\n`;
-      }
-      
-      if (personalScore.recommendations.affirmation) {
-        affirmation = `${isEnglish ? '*Today\'s Affirmation*' : '*இன்றைய உறுதிமொழி*'}:\n"${
-          isEnglish 
-            ? personalScore.recommendations.affirmation.en
-            : personalScore.recommendations.affirmation.ta
-        }"\n\n`;
+      if (typeof nakshatraData === 'string') {
+        try {
+          // Try to parse JSON string
+          const parsed = JSON.parse(nakshatraData);
+          if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name) {
+            nakshatraText = parsed[0].name;
+          } else if (parsed && parsed.name) {
+            nakshatraText = parsed.name;
+          }
+        } catch (e) {
+          // If not valid JSON, use as is
+          nakshatraText = nakshatraData;
+        }
+      } else if (Array.isArray(nakshatraData) && nakshatraData.length > 0) {
+        // It's already an array
+        nakshatraText = nakshatraData[0]?.name || '';
+      } else if (nakshatraData && typeof nakshatraData === 'object') {
+        // It's a single object
+        nakshatraText = nakshatraData.name || '';
       }
     }
+  } catch (e) {
+    console.error("Error extracting nakshatra for share:", e);
+    nakshatraText = '';
+  }
+  
+  // Safely extract tithi
+  try {
+    if (personalScore.panchangData?.tithi) {
+      const tithiData = personalScore.panchangData.tithi;
       
-    const appPromo = isEnglish 
-      ? "Get your daily Cosmic Score based on Vedic astrology 🌟"
-      : "வேத ஜோதிடத்தின் அடிப்படையில் உங்கள் தினசரி கோஸ்மிக் மதிப்பெண்ணைப் பெறுங்கள் 🌟";
-      
-    return scoreText + tarabalamText + chandrashtamaText + favorableActivities + 
-           unfavorableActivities + colors + affirmation + appPromo;
-  };
+      if (typeof tithiData === 'string') {
+        try {
+          // Try to parse JSON string
+          const parsed = JSON.parse(tithiData);
+          if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name) {
+            tithiText = parsed[0].name;
+          } else if (parsed && parsed.name) {
+            tithiText = parsed.name;
+          }
+        } catch (e) {
+          // If not valid JSON, use as is
+          tithiText = tithiData;
+        }
+      } else if (Array.isArray(tithiData) && tithiData.length > 0) {
+        // It's already an array
+        tithiText = tithiData[0]?.name || '';
+      } else if (tithiData && typeof tithiData === 'object') {
+        // It's a single object
+        tithiText = tithiData.name || '';
+      }
+    }
+  } catch (e) {
+    console.error("Error extracting tithi for share:", e);
+    tithiText = '';
+  }
+  
+  // Add extra logging to debug the values
+  console.log("Share data extracted:", { 
+    date: formattedDate,
+    vaara: vaaraText,
+    nakshatra: nakshatraText,
+    tithi: tithiText,
+    score: personalScore.score
+  });
+  
+  // App link
+  const appLink = "https://cosmicscore.app"; // Replace with your actual app URL
+  
+  // Create a concise message in the requested format
+  const message = isEnglish 
+    ? `Cosmic Score for ${formattedDate}: ${vaaraText ? '🌞 ' + vaaraText + ', ' : ''}${nakshatraText ? '🌙 Nakshatra: ' + nakshatraText + ', ' : ''}${tithiText ? 'Tithi: ' + tithiText + ', ' : ''}Score: ${personalScore.score}/10. Check yours 👉 ${appLink}`
+    : `${formattedDate} அன்றைய கோஸ்மிக் மதிப்பெண்: ${vaaraText ? '🌞 ' + vaaraText + ', ' : ''}${nakshatraText ? '🌙 நட்சத்திரம்: ' + nakshatraText + ', ' : ''}${tithiText ? 'திதி: ' + tithiText + ', ' : ''}மதிப்பெண்: ${personalScore.score}/10. உங்களுடையதை பார்க்க 👉 ${appLink}`;
+  
+  // Log the final message for debugging
+  console.log("Final share message:", message);
+  
+  return message;
+};
   
   // Handle custom WhatsApp share with error handling
-  const handleCustomShare = () => {
-    try {
-      const shareText = prepareShareText();
-      shareToWhatsApp(shareText);
-    } catch (error) {
-      console.error('Error preparing share text:', error);
-      // Fallback to basic sharing if there's an error
+// Updated handleCustomShare function
+
+const handleCustomShare = () => {
+  try {
+    // First, validate if personalScore has necessary data
+    if (!personalScore || typeof personalScore !== 'object') {
+      console.error('Invalid personalScore object for sharing');
+      
+      // Fallback to basic sharing
       shareToWhatsApp(isEnglish 
-        ? `My Cosmic Score: ${personalScore.score}/10 ${getScoreEmoji(personalScore.score)}`
-        : `எனது கோஸ்மிக் மதிப்பெண்: ${personalScore.score}/10 ${getScoreEmoji(personalScore.score)}`
+        ? `My Cosmic Score: ${personalScore?.score || '?'}/10`
+        : `எனது கோஸ்மிக் மதிப்பெண்: ${personalScore?.score || '?'}/10`
       );
+      return;
     }
-  };
+    
+    // Try to prepare share text
+    let shareText;
+    try {
+      shareText = prepareShareText();
+      console.log("Prepared share text:", shareText);
+    } catch (prepareError) {
+      console.error('Error preparing share text:', prepareError);
+      
+      // Create simplified fallback text if preparation fails
+      shareText = isEnglish 
+        ? `My Cosmic Score: ${personalScore.score}/10 ${getScoreEmoji(personalScore.score)}`
+        : `எனது கோஸ்மிக் மதிப்பெண்: ${personalScore.score}/10 ${getScoreEmoji(personalScore.score)}`;
+    }
+    
+    // Ensure shareText is a string
+    if (typeof shareText !== 'string') {
+      console.error('Share text is not a string:', shareText);
+      shareText = String(personalScore.score || '?') + '/10';
+    }
+    
+    // Share the text
+    shareToWhatsApp(shareText);
+  } catch (error) {
+    console.error('Critical error in handleCustomShare:', error);
+    
+    // Ultimate fallback for critical errors
+    alert(isEnglish 
+      ? "Sorry, sharing failed. Please try again." 
+      : "பகிர்வு தோல்வியடைந்தது. மீண்டும் முயற்சிக்கவும்.");
+  }
+};
   
   // Determine tabs to show
   const tabs = [
@@ -286,134 +355,146 @@ const ScoreDetailsComponent = () => {
             </h3>
             
             {hasScoreBreakdown ? (
-              <div className="space-y-3">
-                {/* Score Breakdown Items - Grid Layout to fix Tamil text overlap */}
+              <div className="space-y-4">
+                {/* Improved Score Breakdown Items - Using a more responsive layout */}
+                
                 {/* Tithi */}
-                <div className="grid grid-cols-12 gap-1 items-center mb-2">
-                  {/* Label column */}
-                  <div className="col-span-2 text-sm font-medium text-gray-800 dark:text-gray-200">
-                    {isEnglish ? 'Tithi' : 'திதி'}
-                  </div>
-                  
-                  {/* Name column with improved overflow handling */}
-                  <div className="col-span-3 text-xs overflow-hidden text-ellipsis whitespace-nowrap text-gray-700 dark:text-gray-300">
-                    {personalScore.scoreBreakdown.tithi.name}
-                  </div>
-                  
-                  {/* Score column */}
-                  <div className="col-span-1 text-xs font-medium text-center text-indigo-600 dark:text-indigo-400">
-                    {personalScore.scoreBreakdown.tithi.score}/10
-                  </div>
-                  
-                  {/* Progress bar column */}
-                  <div className="col-span-5">
-                    <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full" 
-                        style={{width: `${personalScore.scoreBreakdown.tithi.score * 10}%`}}
-                      ></div>
+                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                  <div className="flex flex-col md:flex-row justify-between mb-1">
+                    <div className="flex items-center mb-1 md:mb-0">
+                      <span className="font-medium text-gray-800 dark:text-gray-200 mr-2 min-w-[80px]">
+                        {isEnglish ? 'Tithi:' : 'திதி:'}
+                      </span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[150px] md:max-w-full">
+                        {personalScore.scoreBreakdown.tithi.name}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400 mr-2">
+                        {personalScore.scoreBreakdown.tithi.score}/10
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        ({personalScore.scoreBreakdown.tithi.weight}%)
+                      </span>
                     </div>
                   </div>
-                  
-                  {/* Weight column */}
-                  <div className="col-span-1 text-xs text-right text-gray-500 dark:text-gray-400">
-                    {personalScore.scoreBreakdown.tithi.weight}%
+                  <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden mt-1">
+                    <div 
+                      className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full" 
+                      style={{width: `${personalScore.scoreBreakdown.tithi.score * 10}%`}}
+                    ></div>
                   </div>
                 </div>
 
-                {/* Vara - same grid layout for consistency */}
-                <div className="grid grid-cols-12 gap-1 items-center mb-2">
-                  <div className="col-span-2 text-sm font-medium text-gray-800 dark:text-gray-200">
-                    {isEnglish ? 'Vara' : 'வாரம்'}
-                  </div>
-                  <div className="col-span-3 text-xs overflow-hidden text-ellipsis whitespace-nowrap text-gray-700 dark:text-gray-300">
-                    {personalScore.scoreBreakdown.vara.name}
-                  </div>
-                  <div className="col-span-1 text-xs font-medium text-center text-indigo-600 dark:text-indigo-400">
-                    {personalScore.scoreBreakdown.vara.score}/10
-                  </div>
-                  <div className="col-span-5">
-                    <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full" 
-                        style={{width: `${personalScore.scoreBreakdown.vara.score * 10}%`}}
-                      ></div>
+                {/* Vara - same improved layout */}
+                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                  <div className="flex flex-col md:flex-row justify-between mb-1">
+                    <div className="flex items-center mb-1 md:mb-0">
+                      <span className="font-medium text-gray-800 dark:text-gray-200 mr-2 min-w-[80px]">
+                        {isEnglish ? 'Vara:' : 'வாரம்:'}
+                      </span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[150px] md:max-w-full">
+                        {personalScore.scoreBreakdown.vara.name}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400 mr-2">
+                        {personalScore.scoreBreakdown.vara.score}/10
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        ({personalScore.scoreBreakdown.vara.weight}%)
+                      </span>
                     </div>
                   </div>
-                  <div className="col-span-1 text-xs text-right text-gray-500 dark:text-gray-400">
-                    {personalScore.scoreBreakdown.vara.weight}%
+                  <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden mt-1">
+                    <div 
+                      className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full" 
+                      style={{width: `${personalScore.scoreBreakdown.vara.score * 10}%`}}
+                    ></div>
                   </div>
                 </div>
 
-                {/* Nakshatra - same grid layout */}
-                <div className="grid grid-cols-12 gap-1 items-center mb-2">
-                  <div className="col-span-2 text-sm font-medium text-gray-800 dark:text-gray-200">
-                    {isEnglish ? 'Nakshatra' : 'நட்சத்திரம்'}
-                  </div>
-                  <div className="col-span-3 text-xs overflow-hidden text-ellipsis whitespace-nowrap text-gray-700 dark:text-gray-300">
-                    {personalScore.scoreBreakdown.nakshatra.name}
-                  </div>
-                  <div className="col-span-1 text-xs font-medium text-center text-indigo-600 dark:text-indigo-400">
-                    {personalScore.scoreBreakdown.nakshatra.score}/10
-                  </div>
-                  <div className="col-span-5">
-                    <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full" 
-                        style={{width: `${personalScore.scoreBreakdown.nakshatra.score * 10}%`}}
-                      ></div>
+                {/* Nakshatra - same improved layout */}
+                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                  <div className="flex flex-col md:flex-row justify-between mb-1">
+                    <div className="flex items-center mb-1 md:mb-0">
+                      <span className="font-medium text-gray-800 dark:text-gray-200 mr-2 min-w-[80px]">
+                        {isEnglish ? 'Nakshatra:' : 'நட்சத்திரம்:'}
+                      </span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[150px] md:max-w-full">
+                        {personalScore.scoreBreakdown.nakshatra.name}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400 mr-2">
+                        {personalScore.scoreBreakdown.nakshatra.score}/10
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        ({personalScore.scoreBreakdown.nakshatra.weight}%)
+                      </span>
                     </div>
                   </div>
-                  <div className="col-span-1 text-xs text-right text-gray-500 dark:text-gray-400">
-                    {personalScore.scoreBreakdown.nakshatra.weight}%
+                  <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden mt-1">
+                    <div 
+                      className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full" 
+                      style={{width: `${personalScore.scoreBreakdown.nakshatra.score * 10}%`}}
+                    ></div>
                   </div>
                 </div>
 
-                {/* Yoga - same grid layout */}
-                <div className="grid grid-cols-12 gap-1 items-center mb-2">
-                  <div className="col-span-2 text-sm font-medium text-gray-800 dark:text-gray-200">
-                    {isEnglish ? 'Yoga' : 'யோகம்'}
-                  </div>
-                  <div className="col-span-3 text-xs overflow-hidden text-ellipsis whitespace-nowrap text-gray-700 dark:text-gray-300">
-                    {personalScore.scoreBreakdown.yoga.name}
-                  </div>
-                  <div className="col-span-1 text-xs font-medium text-center text-indigo-600 dark:text-indigo-400">
-                    {personalScore.scoreBreakdown.yoga.score}/10
-                  </div>
-                  <div className="col-span-5">
-                    <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full" 
-                        style={{width: `${personalScore.scoreBreakdown.yoga.score * 10}%`}}
-                      ></div>
+                {/* Yoga - same improved layout */}
+                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                  <div className="flex flex-col md:flex-row justify-between mb-1">
+                    <div className="flex items-center mb-1 md:mb-0">
+                      <span className="font-medium text-gray-800 dark:text-gray-200 mr-2 min-w-[80px]">
+                        {isEnglish ? 'Yoga:' : 'யோகம்:'}
+                      </span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[150px] md:max-w-full">
+                        {personalScore.scoreBreakdown.yoga.name}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400 mr-2">
+                        {personalScore.scoreBreakdown.yoga.score}/10
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        ({personalScore.scoreBreakdown.yoga.weight}%)
+                      </span>
                     </div>
                   </div>
-                  <div className="col-span-1 text-xs text-right text-gray-500 dark:text-gray-400">
-                    {personalScore.scoreBreakdown.yoga.weight}%
+                  <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden mt-1">
+                    <div 
+                      className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full" 
+                      style={{width: `${personalScore.scoreBreakdown.yoga.score * 10}%`}}
+                    ></div>
                   </div>
                 </div>
 
-                {/* Karana - same grid layout */}
-                <div className="grid grid-cols-12 gap-1 items-center mb-2">
-                  <div className="col-span-2 text-sm font-medium text-gray-800 dark:text-gray-200">
-                    {isEnglish ? 'Karana' : 'கரணம்'}
-                  </div>
-                  <div className="col-span-3 text-xs overflow-hidden text-ellipsis whitespace-nowrap text-gray-700 dark:text-gray-300">
-                    {personalScore.scoreBreakdown.karana.name}
-                  </div>
-                  <div className="col-span-1 text-xs font-medium text-center text-indigo-600 dark:text-indigo-400">
-                    {personalScore.scoreBreakdown.karana.score}/10
-                  </div>
-                  <div className="col-span-5">
-                    <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full" 
-                        style={{width: `${personalScore.scoreBreakdown.karana.score * 10}%`}}
-                      ></div>
+                {/* Karana - same improved layout */}
+                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                  <div className="flex flex-col md:flex-row justify-between mb-1">
+                    <div className="flex items-center mb-1 md:mb-0">
+                      <span className="font-medium text-gray-800 dark:text-gray-200 mr-2 min-w-[80px]">
+                        {isEnglish ? 'Karana:' : 'கரணம்:'}
+                      </span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[150px] md:max-w-full">
+                        {personalScore.scoreBreakdown.karana.name}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400 mr-2">
+                        {personalScore.scoreBreakdown.karana.score}/10
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        ({personalScore.scoreBreakdown.karana.weight}%)
+                      </span>
                     </div>
                   </div>
-                  <div className="col-span-1 text-xs text-right text-gray-500 dark:text-gray-400">
-                    {personalScore.scoreBreakdown.karana.weight}%
+                  <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden mt-1">
+                    <div 
+                      className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full" 
+                      style={{width: `${personalScore.scoreBreakdown.karana.score * 10}%`}}
+                    ></div>
                   </div>
                 </div>
               </div>
@@ -551,7 +632,7 @@ const ScoreDetailsComponent = () => {
                 
                 {/* Colors and Directions */}
                 {personalScore.recommendations.colors && personalScore.recommendations.directions && (
-                  <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     {/* Auspicious Colors */}
                     <div>
                       <h3 className="font-medium mb-2 text-[#1A1046] dark:text-indigo-300">
@@ -621,8 +702,8 @@ const ScoreDetailsComponent = () => {
         >
           <span className="mr-2">📱</span>
           {isEnglish 
-            ? "Share Full Insights to WhatsApp" 
-            : "முழு உள்ளுணர்வுகளை வாட்ஸ்அப்பில் பகிரவும்"}
+            ? "Share to WhatsApp" 
+            : "வாட்ஸ்அப்பில் பகிரவும்"}
         </button>
       </div>
     </div>

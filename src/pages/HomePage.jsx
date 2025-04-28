@@ -84,6 +84,25 @@ const parseJsonIfString = (data) => {
   return data;
 };
 
+// Helper function to format time consistently across timezones
+const formatTimeConsistently = (dateString) => {
+  if (!dateString) return '-';
+  try {
+    // Parse the date string
+    const date = new Date(dateString);
+    // Format the time using UTC to avoid timezone shifting
+    return date.toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'UTC'
+    });
+  } catch (e) {
+    console.error("Error formatting time:", e);
+    return dateString;
+  }
+};
+
 const HomePage = () => {
   const { 
     selectedDate, 
@@ -151,10 +170,16 @@ const HomePage = () => {
   const processedKarana = parseJsonIfString(panchangData.karana);
   const processedYoga = parseJsonIfString(panchangData.yoga);
   
-  // Format date for display
+  // Format date for display with timeZone: 'UTC' to ensure consistent display
   const formattedDate = new Date(panchangData.date).toLocaleDateString(
     isEnglish ? 'en-US' : 'ta-IN', 
-    { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
+    { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }
+  );
+  
+  // Format selected date for display
+  const selectedDateDisplay = selectedDate.toLocaleDateString(
+    isEnglish ? 'en-US' : 'ta-IN',
+    { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }
   );
   
   // Get color based on score
@@ -195,7 +220,7 @@ const HomePage = () => {
             {isEnglish ? "Settings" : "அமைப்புகள்"}
           </Link>
           <Link to="/calendar" className="bg-[#E3B23C]/20 border border-[#E3B23C]/50 px-3 py-1.5 rounded-full text-sm text-[#E3B23C]">
-            {formattedDate}
+            {selectedDateDisplay}
           </Link>
         </div>
       </div>
@@ -368,7 +393,7 @@ const HomePage = () => {
                       <div key={`tithi-${index}`} className="text-sm bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-600">
                         <div className="font-medium text-gray-800 dark:text-gray-200">{item.name}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {item.paksha} • {new Date(item.start).toLocaleTimeString()} - {new Date(item.end).toLocaleTimeString()}
+                          {item.paksha} • {formatTimeConsistently(item.start)} - {formatTimeConsistently(item.end)}
                         </div>
                       </div>
                     ))}
@@ -385,7 +410,7 @@ const HomePage = () => {
                       <div key={`nakshatra-${index}`} className="text-sm bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-600">
                         <div className="font-medium text-gray-800 dark:text-gray-200">{item.name}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
-                          Lord: {item.lord?.name} • {new Date(item.start).toLocaleTimeString()} - {new Date(item.end).toLocaleTimeString()}
+                          Lord: {item.lord?.name} • {formatTimeConsistently(item.start)} - {formatTimeConsistently(item.end)}
                         </div>
                       </div>
                     ))}
@@ -402,7 +427,7 @@ const HomePage = () => {
                       <div key={`karana-${index}`} className="text-sm bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-600">
                         <div className="font-medium text-gray-800 dark:text-gray-200">{item.name}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {new Date(item.start).toLocaleTimeString()} - {new Date(item.end).toLocaleTimeString()}
+                          {formatTimeConsistently(item.start)} - {formatTimeConsistently(item.end)}
                         </div>
                       </div>
                     ))}
@@ -419,7 +444,7 @@ const HomePage = () => {
                       <div key={`yoga-${index}`} className="text-sm bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-600">
                         <div className="font-medium text-gray-800 dark:text-gray-200">{item.name}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {new Date(item.start).toLocaleTimeString()} - {new Date(item.end).toLocaleTimeString()}
+                          {formatTimeConsistently(item.start)} - {formatTimeConsistently(item.end)}
                         </div>
                       </div>
                     ))}
@@ -429,10 +454,10 @@ const HomePage = () => {
               
               <h3 className="font-medium mb-2 mt-4 text-gray-800 dark:text-gray-200">Timing Details</h3>
               <div className="grid grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <div>Sunrise: {panchangData.sunrise ? new Date(panchangData.sunrise).toLocaleTimeString() : '-'}</div>
-                <div>Sunset: {panchangData.sunset ? new Date(panchangData.sunset).toLocaleTimeString() : '-'}</div>
-                <div>Moonrise: {panchangData.moonrise ? new Date(panchangData.moonrise).toLocaleTimeString() : '-'}</div>
-                <div>Moonset: {panchangData.moonset ? new Date(panchangData.moonset).toLocaleTimeString() : '-'}</div>
+                <div>Sunrise: {formatTimeConsistently(panchangData.sunrise)}</div>
+                <div>Sunset: {formatTimeConsistently(panchangData.sunset)}</div>
+                <div>Moonrise: {formatTimeConsistently(panchangData.moonrise)}</div>
+                <div>Moonset: {formatTimeConsistently(panchangData.moonset)}</div>
               </div>
               
               <h3 className="font-medium mt-4 mb-2 text-gray-800 dark:text-gray-200">Special Features</h3>
@@ -457,14 +482,107 @@ const HomePage = () => {
           )}
         </div>
         
-        {/* Share Button */}
-        <button 
-          onClick={shareToWhatsApp}
-          className="w-full mt-4 bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center"
-        >
-          <span className="mr-2">📱</span>
-          {isEnglish ? "Share to WhatsApp" : "வாட்ஸ்அப்பில் பகிரவும்"}
-        </button>
+{/* Share Button */}
+<button 
+  onClick={() => {
+    // Create a proper formatted message
+    const formattedDate = new Date(panchangData.date).toLocaleDateString(
+      isEnglish ? 'en-US' : 'ta-IN', 
+      { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }
+    );
+    
+    // Extract values with safeguards to prevent [object Object]
+    let vaara = '';
+    let nakshatra = '';
+    let tithi = '';
+    
+    // Extract vaara (weekday)
+    if (typeof panchangData?.vaara === 'string') {
+      vaara = panchangData.vaara;
+    }
+    
+    // Extract nakshatra
+    try {
+      if (typeof panchangData?.main_nakshatra === 'string') {
+        nakshatra = panchangData.main_nakshatra;
+      } else if (panchangData?.nakshatra) {
+        // Handle different possible formats
+        const nakshatraData = panchangData.nakshatra;
+        
+        if (typeof nakshatraData === 'string') {
+          try {
+            // Try to parse JSON string
+            const parsed = JSON.parse(nakshatraData);
+            if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name) {
+              nakshatra = parsed[0].name;
+            } else if (parsed && parsed.name) {
+              nakshatra = parsed.name;
+            }
+          } catch (e) {
+            // If not valid JSON, use as is
+            nakshatra = nakshatraData;
+          }
+        } else if (Array.isArray(nakshatraData) && nakshatraData.length > 0) {
+          // It's already an array
+          nakshatra = nakshatraData[0]?.name || '';
+        } else if (nakshatraData && typeof nakshatraData === 'object') {
+          // It's a single object
+          nakshatra = nakshatraData.name || '';
+        }
+      }
+    } catch (e) {
+      console.error("Error extracting nakshatra for share:", e);
+    }
+    
+    // Extract tithi
+    try {
+      if (panchangData?.tithi) {
+        const tithiData = panchangData.tithi;
+        
+        if (typeof tithiData === 'string') {
+          try {
+            // Try to parse JSON string
+            const parsed = JSON.parse(tithiData);
+            if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name) {
+              tithi = parsed[0].name;
+            } else if (parsed && parsed.name) {
+              tithi = parsed.name;
+            }
+          } catch (e) {
+            // If not valid JSON, use as is
+            tithi = tithiData;
+          }
+        } else if (Array.isArray(tithiData) && tithiData.length > 0) {
+          // It's already an array
+          tithi = tithiData[0]?.name || '';
+        } else if (tithiData && typeof tithiData === 'object') {
+          // It's a single object
+          tithi = tithiData.name || '';
+        }
+      }
+    } catch (e) {
+      console.error("Error extracting tithi for share:", e);
+    }
+    
+    // Get score value
+    const scoreValue = personalScore?.score || panchangData?.cosmic_score || '-';
+    
+    // App link (replace with your actual app URL in production)
+    const appLink = "https://cosmicscoreapp.vercel.app/";
+    
+    // Create the message as a string
+    const message = isEnglish
+      ? `Cosmic Score for ${formattedDate}: ${vaara ? '🌞 ' + vaara + ', ' : ''}${nakshatra ? '🌙 Nakshatra: ' + nakshatra + ', ' : ''}${tithi ? 'Tithi: ' + tithi + ', ' : ''}Score: ${scoreValue}/10. Check yours 👉 ${appLink}`
+      : `${formattedDate} அன்றைய கோஸ்மிக் மதிப்பெண்: ${vaara ? '🌞 ' + vaara + ', ' : ''}${nakshatra ? '🌙 நட்சத்திரம்: ' + nakshatra + ', ' : ''}${tithi ? 'திதி: ' + tithi + ', ' : ''}மதிப்பெண்: ${scoreValue}/10. உங்களுடையதை பார்க்க 👉 ${appLink}`;
+    
+    // Pass the message string to the shareToWhatsApp function
+    shareToWhatsApp(message);
+  }}
+  className="w-full mt-4 bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center"
+>
+  <span className="mr-2">📱</span>
+  {isEnglish ? "Share to WhatsApp" : "வாட்ஸ்அப்பில் பகிரவும்"}
+</button>
       </div>
     </div>
   );
